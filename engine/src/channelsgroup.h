@@ -26,6 +26,7 @@
 #include "scenevalue.h"
 
 class QXmlStreamReader;
+class Universe;
 class Doc;
 
 /** @addtogroup engine Engine
@@ -110,6 +111,12 @@ public:
 
     /** Returns the current list of channels of this group */
     QList <SceneValue> getChannels() const;
+
+    /** Set the master value (0-255) and push scaling factors to Universes */
+    void setMasterValue(uchar value, QList<Universe*> universes);
+
+    /** Get the current master value */
+    uchar masterValue() const;
 
     /*********************************************************************
      * External input

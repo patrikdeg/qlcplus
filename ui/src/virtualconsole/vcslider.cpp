@@ -40,6 +40,8 @@
 
 #include "vcsliderproperties.h"
 #include "vcpropertieseditor.h"
+#include "inputoutputmap.h"
+#include "channelsgroup.h"
 #include "genericfader.h"
 #include "fadechannel.h"
 #include "mastertimer.h"
@@ -101,6 +103,7 @@ VCSlider::VCSlider(QWidget *parent, Doc *doc)
     , m_widgetMode(WSlider)
     , m_cngType(ClickAndGoWidget::None)
     , m_isOverriding(false)
+    , m_controlledChannelsGroupId(ChannelsGroup::invalidId())
     , m_lastInputValue(-1)
 {
     /* Set the class name "VCSlider" as the object name as well */
@@ -461,6 +464,7 @@ QString VCSlider::sliderModeToString(SliderMode mode)
         case Level: return QString("Level"); break;
         case Playback: return QString("Playback"); break;
         case Submaster: return QString("Submaster"); break;
+        case ChannelGroupMaster: return QString("ChannelGroupMaster"); break;
         default: return QString("Unknown"); break;
     }
 }
@@ -469,9 +473,11 @@ VCSlider::SliderMode VCSlider::stringToSliderMode(const QString& mode)
 {
     if (mode == QString("Level"))
         return Level;
-    else  if (mode == QString("Playback"))
-       return Playback;
-    else //if (mode == QString("Submaster"))
+    else if (mode == QString("Playback"))
+        return Playback;
+    else if (mode == QString("ChannelGroupMaster"))
+        return ChannelGroupMaster;
+    else
         return Submaster;
 }
 
@@ -482,7 +488,7 @@ VCSlider::SliderMode VCSlider::sliderMode() const
 
 void VCSlider::setSliderMode(SliderMode mode)
 {
-    Q_ASSERT(mode >= Level && mode <= Submaster);
+    Q_ASSERT(mode >= Level && mode <= ChannelGroupMaster);
 
     m_sliderMode = mode;
 
@@ -539,6 +545,21 @@ void VCSlider::setSliderMode(SliderMode mode)
         {
             m_slider->setRange(0, UCHAR_MAX);
             m_slider->setValue(levelValue());
+            if (m_widgetMode == WSlider)
+                m_slider->setStyleSheet(submasterStyleSheet);
+        }
+        if (m_doc->mode() == Doc::Operate)
+            m_doc->masterTimer()->unregisterDMXSource(this);
+    }
+    else if (mode == ChannelGroupMaster)
+    {
+        m_monitorEnabled = false;
+        setPlaybackFunction(Function::invalidId());
+
+        if (m_slider)
+        {
+            m_slider->setRange(0, UCHAR_MAX);
+            m_slider->setValue(UCHAR_MAX);
             if (m_widgetMode == WSlider)
                 m_slider->setStyleSheet(submasterStyleSheet);
         }
@@ -1128,6 +1149,20 @@ FunctionParent VCSlider::functionParent() const
 }
 
 /*********************************************************************
+ * Channel Group Master
+ *********************************************************************/
+
+quint32 VCSlider::controlledChannelsGroup() const
+{
+    return m_controlledChannelsGroupId;
+}
+
+void VCSlider::setControlledChannelsGroup(quint32 id)
+{
+    m_controlledChannelsGroupId = id;
+}
+
+/*********************************************************************
  * Submaster
  *********************************************************************/
 
@@ -1392,6 +1427,14 @@ void VCSlider::setSliderValue(uchar value, bool scale, bool external)
         {
             setLevelValue(val);
             emitSubmasterValue();
+        }
+        break;
+
+        case ChannelGroupMaster:
+        {
+            ChannelsGroup *grp = m_doc->channelsGroup(m_controlledChannelsGroupId);
+            if (grp != nullptr)
+                grp->setMasterValue(uchar(value), m_doc->inputOutputMap()->universes());
         }
         break;
     }
@@ -1705,6 +1748,11 @@ bool VCSlider::loadXML(QXmlStreamReader &root)
                 else
                     setChannelsMonitorEnabled(true);
             }
+
+            if (mAttrs.hasAttribute(KXMLQLCVCSliderChannelsGroupID))
+            {
+                setControlledChannelsGroup(mAttrs.value(KXMLQLCVCSliderChannelsGroupID).toUInt());
+            }
         }
         else if (root.name() == KXMLQLCVCSliderOverrideReset)
         {
@@ -1882,6 +1930,10 @@ bool VCSlider::saveXML(QXmlStreamWriter *doc)
         else
             doc->writeAttribute(KXMLQLCVCSliderLevelMonitor, "false");
     }
+
+    /* Channel Group Master ID */
+    if (sliderMode() == ChannelGroupMaster && m_controlledChannelsGroupId != ChannelsGroup::invalidId())
+        doc->writeAttribute(KXMLQLCVCSliderChannelsGroupID, QString::number(m_controlledChannelsGroupId));
 
     doc->writeCharacters(sliderModeToString(m_sliderMode));
 

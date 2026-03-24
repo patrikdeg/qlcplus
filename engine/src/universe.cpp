@@ -71,6 +71,7 @@ Universe::Universe(quint32 id, GrandMaster *gm, QObject *parent)
     , m_passthroughValues()
 {
     m_modifiers.fill(NULL, UNIVERSE_SIZE);
+    m_channelGroupFactors.fill(1.0, UNIVERSE_SIZE);
 
     connect(m_grandMaster, SIGNAL(valueChanged(uchar)),
             this, SLOT(slotGMValueChanged()));
@@ -532,6 +533,24 @@ uchar Universe::applyGM(int channel, uchar value)
     return value;
 }
 
+uchar Universe::applyChannelGroupMaster(int channel, uchar value)
+{
+    double factor = m_channelGroupFactors.at(channel);
+    if (factor < 1.0)
+        return uchar(floor(double(value) * factor + 0.5));
+
+    return value;
+}
+
+void Universe::setChannelGroupMasterFactor(int channel, double factor)
+{
+    if (channel < 0 || channel >= UNIVERSE_SIZE)
+        return;
+
+    m_channelGroupFactors[channel] = qBound(0.0, factor, 1.0);
+    updatePostGMValue(channel);
+}
+
 uchar Universe::applyModifiers(int channel, uchar value)
 {
     if (m_modifiers.at(channel) != NULL)
@@ -561,6 +580,7 @@ void Universe::updatePostGMValue(int channel)
     if (value != 0)
         value = applyGM(channel, value);
 
+    value = applyChannelGroupMaster(channel, value);
     value = applyModifiers(channel, value);
     value = applyPassthrough(channel, value);
 

@@ -27,6 +27,7 @@
 
 #include "clickandgoslider.h"
 #include "clickandgowidget.h"
+#include "channelsgroup.h"
 #include "knobwidget.h"
 #include "dmxsource.h"
 #include "vcwidget.h"
@@ -68,7 +69,8 @@ class VCSliderProperties;
 #define KXMLQLCVCSliderChannel          QStringLiteral("Channel")
 #define KXMLQLCVCSliderChannelFixture   QStringLiteral("Fixture")
 
-#define KXMLQLCVCSliderPlayback         QStringLiteral("Playback")
+#define KXMLQLCVCSliderPlayback             QStringLiteral("Playback")
+#define KXMLQLCVCSliderChannelsGroupID      QStringLiteral("ChannelsGroupID")
 #define KXMLQLCVCSliderPlaybackFunction QStringLiteral("Function")
 #define KXMLQLCVCSliderPlaybackFlash    QStringLiteral("Flash")
 
@@ -148,7 +150,8 @@ public:
     {
         Level,
         Playback,
-        Submaster
+        Submaster,
+        ChannelGroupMaster
     };
 
 public:
@@ -419,6 +422,16 @@ protected:
 
 private:
     FunctionParent functionParent() const;
+
+    /*********************************************************************
+     * Channel Group Master
+     *********************************************************************/
+public:
+    quint32 controlledChannelsGroup() const;
+    void setControlledChannelsGroup(quint32 id);
+
+protected:
+    quint32 m_controlledChannelsGroupId;
 
     /*********************************************************************
      * Submaster

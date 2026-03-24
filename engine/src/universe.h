@@ -33,6 +33,7 @@
 class QXmlStreamReader;
 class QLCInputProfile;
 class ChannelModifier;
+class ChannelsGroup;
 class InputOutputMap;
 class GenericFader;
 class QLCIOPlugin;
@@ -170,6 +171,8 @@ protected:
      * @return Value filtered through grand master (if applicable)
      */
     uchar applyGM(int channel, uchar value);
+
+    uchar applyChannelGroupMaster(int channel, uchar value);
 
     uchar applyModifiers(int channel, uchar value);
     void updatePostGMValue(int channel);
@@ -318,6 +321,18 @@ protected:
     /** Vector of pointer to ChannelModifier classes. If not NULL, they will modify
      *  a DMX value right before HTP/LTP check and before being assigned to preGM */
     QVector<ChannelModifier*> m_modifiers;
+
+    /************************************************************************
+     * Channel Group Master
+     ************************************************************************/
+public:
+    /** Set a scaling factor for a channel, used by ChannelsGroup master.
+     *  Factor is 0.0 (fully dimmed) to 1.0 (no scaling). */
+    void setChannelGroupMasterFactor(int channel, double factor);
+
+protected:
+    /** Per-channel scaling factors from ChannelsGroup masters */
+    QVector<double> m_channelGroupFactors;
 
     /** Modified channels with the non-modified value at 0.
      *  This is used for ranged initialization operations. */

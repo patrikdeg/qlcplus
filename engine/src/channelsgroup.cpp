@@ -24,6 +24,7 @@
 #include "qlcfixturemode.h"
 #include "channelsgroup.h"
 #include "scenevalue.h"
+#include "universe.h"
 #include "fixture.h"
 #include "doc.h"
 
@@ -144,6 +145,31 @@ bool ChannelsGroup::addChannel(quint32 fxid, quint32 channel)
 QList <SceneValue> ChannelsGroup::getChannels() const
 {
     return m_channels;
+}
+
+void ChannelsGroup::setMasterValue(uchar value, QList<Universe *> universes)
+{
+    m_masterValue = value;
+    double factor = double(value) / double(UCHAR_MAX);
+
+    for (const SceneValue &scv : m_channels)
+    {
+        Fixture *fxi = m_doc->fixture(scv.fxi);
+        if (fxi == nullptr)
+            continue;
+
+        quint32 uni = fxi->universe();
+        if (uni >= quint32(universes.count()))
+            continue;
+
+        int absAddr = int(fxi->address()) + int(scv.channel);
+        universes[uni]->setChannelGroupMasterFactor(absAddr, factor);
+    }
+}
+
+uchar ChannelsGroup::masterValue() const
+{
+    return m_masterValue;
 }
 
 /*********************************************************************

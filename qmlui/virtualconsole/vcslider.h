@@ -24,6 +24,7 @@
 #include "treemodel.h"
 #include "dmxsource.h"
 #include "grandmaster.h"
+#include "channelsgroup.h"
 
 #define KXMLQLCVCSlider QStringLiteral("Slider")
 
@@ -158,7 +159,7 @@ protected:
      * Slider Mode
      *********************************************************************/
 public:
-    enum SliderMode { Level, Adjust, Submaster, GrandMaster };
+    enum SliderMode { Level, Adjust, Submaster, GrandMaster, ChannelGroupMaster };
     Q_ENUM(SliderMode)
 
 public:
@@ -411,6 +412,17 @@ protected:
      *********************************************************************/
 signals:
     void submasterValueChanged(qreal value);
+
+    /*********************************************************************
+     * Channel Group Master mode
+     *********************************************************************/
+public:
+    /** Get/Set the ID of the ChannelsGroup controlled by this slider */
+    quint32 controlledChannelsGroup() const;
+    void setControlledChannelsGroup(quint32 id);
+
+protected:
+    quint32 m_controlledChannelsGroupId;
 
     /*********************************************************************
      * Grand Master mode

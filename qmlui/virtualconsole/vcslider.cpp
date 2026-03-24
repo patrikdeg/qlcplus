@@ -30,8 +30,11 @@
 #include "genericfader.h"
 #include "fadechannel.h"
 #include "qlcmacros.h"
+#include "inputoutputmap.h"
+#include "channelsgroup.h"
 #include "vcslider.h"
 #include "function.h"
+#include "universe.h"
 #include "tardis.h"
 #include "doc.h"
 #include "app.h"
@@ -63,7 +66,8 @@
 #define KXMLQLCVCSliderPlayback             QStringLiteral("Playback") // LEGACY
 #define KXMLQLCVCSliderAdjust               QStringLiteral("Adjust")
 #define KXMLQLCVCSliderAdjustAttribute      QStringLiteral("Attribute")
-#define KXMLQLCVCSliderControlledFunction   QStringLiteral("Function")
+#define KXMLQLCVCSliderControlledFunction       QStringLiteral("Function")
+#define KXMLQLCVCSliderChannelsGroupID          QStringLiteral("ChannelsGroupID")
 
 /** **************** External Control IDs ***************** */
 
@@ -104,6 +108,7 @@ VCSlider::VCSlider(Doc *doc, QObject *parent)
     , m_attributeMinValue(0)
     , m_attributeMaxValue(UCHAR_MAX)
     , m_adjustFlashEnabled(false)
+    , m_controlledChannelsGroupId(ChannelsGroup::invalidId())
 {
     setType(VCWidget::SliderWidget);
     setSliderMode(Adjust);
@@ -229,6 +234,7 @@ QString VCSlider::sliderModeToString(SliderMode mode)
         case Level: return QString("Level");
         case Submaster: return QString("Submaster");
         case GrandMaster: return QString("GrandMaster");
+        case ChannelGroupMaster: return QString("ChannelGroupMaster");
         case Adjust: return QString("Adjust");
         default: return QString("Unknown");
     }
@@ -242,6 +248,8 @@ VCSlider::SliderMode VCSlider::stringToSliderMode(const QString& mode)
         return Submaster;
     else if (mode == QString("GrandMaster"))
         return GrandMaster;
+    else if (mode == QString("ChannelGroupMaster"))
+        return ChannelGroupMaster;
     else
         return Adjust;
 }
@@ -253,7 +261,7 @@ VCSlider::SliderMode VCSlider::sliderMode() const
 
 void VCSlider::setSliderMode(SliderMode mode)
 {
-    Q_ASSERT(mode >= Level && mode <= GrandMaster);
+    Q_ASSERT(mode >= Level && mode <= ChannelGroupMaster);
 
     if (mode != m_sliderMode)
         Tardis::instance()->enqueueAction(Tardis::VCSliderSetMode, id(), m_sliderMode, mode);
@@ -276,6 +284,7 @@ void VCSlider::setSliderMode(SliderMode mode)
         break;
         case Submaster:
         case GrandMaster:
+        case ChannelGroupMaster:
             // disable all unneeded features
             setAdjustFlashEnabled(false);
             setMonitorEnabled(false);
@@ -465,6 +474,13 @@ void VCSlider::setValue(int value, bool setDMX, bool updateFeedback)
         break;
         case GrandMaster:
             m_doc->inputOutputMap()->setGrandMasterValue(value);
+        break;
+        case ChannelGroupMaster:
+        {
+            ChannelsGroup *grp = m_doc->channelsGroup(m_controlledChannelsGroupId);
+            if (grp != nullptr)
+                grp->setMasterValue(uchar(value), m_doc->inputOutputMap()->universes());
+        }
         break;
         case Adjust:
             m_adjustChangeCounter++;
@@ -1203,6 +1219,20 @@ void VCSlider::setGrandMasterChannelMode(GrandMaster::ChannelMode mode)
 }
 
 /*********************************************************************
+ * Channel Group Master mode
+ *********************************************************************/
+
+quint32 VCSlider::controlledChannelsGroup() const
+{
+    return m_controlledChannelsGroupId;
+}
+
+void VCSlider::setControlledChannelsGroup(quint32 id)
+{
+    m_controlledChannelsGroupId = id;
+}
+
+/*********************************************************************
  * DMXSource
  *********************************************************************/
 
@@ -1540,6 +1570,11 @@ bool VCSlider::loadXML(QXmlStreamReader &root)
                 if (mAttrs.value(KXMLQLCVCSliderLevelMonitor).toString() != "false")
                     enableMonitoring = true;
             }
+
+            if (mAttrs.hasAttribute(KXMLQLCVCSliderChannelsGroupID))
+            {
+                setControlledChannelsGroup(mAttrs.value(KXMLQLCVCSliderChannelsGroupID).toUInt());
+            }
         }
         else if (root.name() == KXMLQLCVCSliderOverrideReset)
         {
@@ -1745,6 +1780,10 @@ bool VCSlider::saveXML(QXmlStreamWriter *doc) const
     /* Monitor channels */
     if (sliderMode() == Level && monitorEnabled() == true)
         doc->writeAttribute(KXMLQLCVCSliderLevelMonitor, "true");
+
+    /* Channel Group Master ID */
+    if (sliderMode() == ChannelGroupMaster && m_controlledChannelsGroupId != ChannelsGroup::invalidId())
+        doc->writeAttribute(KXMLQLCVCSliderChannelsGroupID, QString::number(m_controlledChannelsGroupId));
 
     doc->writeCharacters(sliderModeToString(m_sliderMode));
 
