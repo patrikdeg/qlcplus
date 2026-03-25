@@ -430,9 +430,6 @@ public:
     quint32 controlledChannelsGroup() const;
     void setControlledChannelsGroup(quint32 id);
 
-protected:
-    quint32 m_controlledChannelsGroupId;
-
     /*********************************************************************
      * Submaster
      *********************************************************************/
@@ -604,6 +601,7 @@ protected slots:
 protected:
     QToolButton *m_resetButton;
     bool m_isOverriding;
+    quint32 m_controlledChannelsGroupId;
 
 private:
     QKeySequence m_overrideResetKeySequence;

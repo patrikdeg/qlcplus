@@ -102,8 +102,8 @@ VCSlider::VCSlider(QWidget *parent, Doc *doc)
     , m_externalMovement(false)
     , m_widgetMode(WSlider)
     , m_cngType(ClickAndGoWidget::None)
-    , m_controlledChannelsGroupId(ChannelsGroup::invalidId())
     , m_isOverriding(false)
+    , m_controlledChannelsGroupId(ChannelsGroup::invalidId())
     , m_lastInputValue(-1)
 {
     /* Set the class name "VCSlider" as the object name as well */
